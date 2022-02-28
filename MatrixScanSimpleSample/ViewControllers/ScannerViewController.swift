@@ -55,7 +55,7 @@ class ScannerViewController: UIViewController {
         guard let resultsViewController = segue.destination as? ResultViewController else {
             return
         }
-        resultsViewController.codes = Array(results.values)
+        resultsViewController.codes = Array(results.keys)
     }
 
     @IBAction func unwindToScanner(segue: UIStoryboardSegue) {}
@@ -84,11 +84,7 @@ class ScannerViewController: UIViewController {
         // The settings instance initially has all types of barcodes (symbologies) disabled. For the purpose of this
         // sample we enable a very generous set of symbologies. In your own app ensure that you only enable the
         // symbologies that your app requires as every additional enabled symbology has an impact on processing times.
-        settings.set(symbology: .ean13UPCA, enabled: true)
-        settings.set(symbology: .ean8, enabled: true)
-        settings.set(symbology: .upce, enabled: true)
-        settings.set(symbology: .code39, enabled: true)
-        settings.set(symbology: .code128, enabled: true)
+        settings.set(symbology: .qr, enabled: true)
 
         // Create new barcode tracking mode with the settings from above.
         barcodeTracking = BarcodeTracking(context: context, settings: settings)
@@ -119,8 +115,24 @@ extension ScannerViewController: BarcodeTrackingListener {
         let barcodes = session.trackedBarcodes.values.compactMap { $0.barcode }
         DispatchQueue.main.async { [weak self] in
             barcodes.forEach {
-                if let self = self, let data = $0.data, !data.isEmpty {
-                    self.results[data] = $0
+                // Method 1: Simply show `data` on the UI. It WILL NOT work when the string is Shift-JIS (it only works only UTF-8).
+//                if let self = self, let data = $0.data, !data.isEmpty {
+//                    self.results[data] = $0
+//                }
+                
+                // Method 2: Detect the string encoding using rawData.
+                // Apple's API to detect string encoding: https://developer.apple.com/documentation/foundation/nsstring/1413576-stringencoding
+                if let self = self {
+                    var nsString: NSString?
+                    guard case let rawValue = NSString.stringEncoding(for: $0.rawData, encodingOptions: nil, convertedString: &nsString, usedLossyConversion: nil), rawValue != 0 else { return }
+                    let detectedEncoding = String.Encoding.init(rawValue: rawValue)
+                    print("detected encoding's raw value: \(rawValue)")
+                    // When the QR code's value is ち, we are able to detect the string encoding as Shift JIS (raw value: 8). https://developer.apple.com/documentation/foundation/1497293-string_encodings/nsshiftjisstringencoding
+                    // When the QR code's value is １, the detected string encoding is Windows codepage 1254 (raw value: 14) not Shift JIS. https://developer.apple.com/documentation/foundation/1497293-string_encodings/nswindowscp1254stringencoding
+                    if let text = String(data: $0.rawData, encoding: detectedEncoding) {
+                        print("text: \(text)")
+                        self.results[text] = $0
+                    }
                 }
             }
         }

@@ -20,7 +20,7 @@ class ResultViewController: UIViewController {
         static let cellIdentifier = "CellIdentifier"
     }
 
-    var codes: [Barcode]!
+    var codes: [String]!
 }
 
 // MARK: - UITableViewDataSource
@@ -35,8 +35,8 @@ extension ResultViewController: UITableViewDataSource {
                    cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellIdentifier,
                                                  for: indexPath)
-        cell.textLabel?.text = codes[indexPath.row].data
-        cell.detailTextLabel?.text = SymbologyDescription(symbology: codes[indexPath.row].symbology).readableName
+        cell.textLabel?.text = codes[indexPath.row]
+//        cell.detailTextLabel?.text = SymbologyDescription(symbology: codes[indexPath.row].symbology).readableName
 
         return cell
     }
